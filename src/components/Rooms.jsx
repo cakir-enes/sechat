@@ -5,10 +5,16 @@ import { UserList } from "./Users"
 import { AddCircle, Add, Checkmark, Close } from "grommet-icons"
 
 export default function Rooms() {
-    let [rooms] = useRoomStore(s => [s.rooms])
+    let [rooms, createRoom] = useRoomStore(s => [s.rooms, s.createRoom])
 
     let [name, setName] = useState("")
     let [isCreating, setIsCreating] = useState(false)
+
+    let create = () => {
+        setIsCreating(false)
+        setName("")
+        createRoom(name)
+    }
 
     return (
         <Box>
@@ -17,7 +23,7 @@ export default function Rooms() {
                 <Button margin={{ left: "2px" }} size="small" primary icon={<Checkmark />} />
                 <Button margin={{ left: "2px" }} size="small" icon={<Close />} onClick={() => { setIsCreating(false); setName("") }} />
             </Box>
-            ) : (<Box direction="row" animation="slideDown">
+            ) : (<Box direction="row" animation="slideDown" background="brand">
                 <Heading margin="none">
                     Rooms
                         </Heading>

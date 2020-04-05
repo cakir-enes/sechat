@@ -7,7 +7,7 @@ export default function Users() {
     let [users] = useUserStore(s => [s.users])
 
     return (
-        <Box background="light-1">
+        <Box background="brand">
             <Heading margin="none">Users</Heading>
             <UserList users={users} />
         </Box>)
