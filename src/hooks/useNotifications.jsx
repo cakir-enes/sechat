@@ -1,13 +1,7 @@
 import React, { useState, useEffect } from "react"
+import create from "zustand"
 
-export default function useNotifications() {
-    
-    let [pending, setPending] = useState([])
-
-    useEffect(() => {
-
-    }, [])
-
-    return {pending}
-
-}
+export const [useNotificationStore] = create(set => ({
+    pending: [],
+    newNotification: (newNotif) => set(s => ({pending: [...s.pending, newNotif]}))
+}))
