@@ -6,22 +6,16 @@ import { set, get, del } from 'idb-keyval';
 
 export default function useCrypto() {
 
-    let [publicKey, setPublicKey] = useState()
-
+    let [publicKeys, setPublicKeys] = useState({ encryption: null, signing: null })
     let user = useActiveUserStore(s => s.active)
-
     let [room] = useMessageStore(s => [s.currentRoom])
-
     let [roomkey, setRoomkey] = useState()
-
-    let [keys, setKeys] = useState()
     let [signKeys, setSignKeys] = useState()
 
     useEffect(() => {
         console.count("key check")
         async function check() {
             if (!user) return
-            console.count("boiiiii")
             let keypair = await get(`user:${user.name}:rsa`)
             let signkeypair = await get(`user:${user.name}:ecdsa`)
             if (!keypair) {
@@ -29,17 +23,11 @@ export default function useCrypto() {
                 signkeypair = await createECDSApair()
                 set(`user:${user.name}:rsa`, keypair)
                 set(`user:${user.name}:ecdsa`, signkeypair)
-            } else {
-                console.log(keypair.publicKey)
-                console.log(signkeypair.privateKey)
             }
-            setKeys(keypair)
             setSignKeys(signkeypair)
-            createAESKey().then(k => {
-                console.log("AESKEYS: ")
-                console.dir(k)
-                setRoomkey(k)
-            })
+            let encrKey = window.crypto.subtle.exportKey("jwk", keypair.publicKey)
+            let signKey = window.crypto.subtle.exportKey("jwk", signkeypair.publicKey)
+            setPublicKeys({ encryption: await encrKey, signing: await signKey })
         }
         check()
     }, [user])
@@ -51,15 +39,34 @@ export default function useCrypto() {
             .catch(err => console.error(`Roomkey for ${room.name} not found`))
     }, [room])
 
+    useEffect(() => {
+        if (!publicKeys || !publicKeys.encryption || !publicKeys.signing) return
+        console.log("PUB EYS")
+        console.dir(publicKeys)
+    }, [publicKeys])
+
+    useEffect(() => {
+        if (roomkey) {
+            async function dene() {
+                let msg = { msg: "XCXZCXZC" }
+                let enc = await encrypt(msg)
+                let dec = await decrypt(enc)
+                let sig = await sign(dec)
+                console.dir({ enc, dec, sig })
+            }
+            dene()
+        }
+    }, [roomkey])
+
     async function encrypt(msg) {
         let buf = str2ab(JSON.stringify(msg))
-        let iv = window.crypto.getRandomValues(new Uint8Array(16));
+        let iv = window.crypto.getRandomValues(new Uint16Array(8));
         let cipher = await window.crypto.subtle.encrypt({ name: "AES-CBC", iv }, roomkey, buf)
-        return { ciphertext: ab2str(cipher), iv }
+        return { ciphertext: ab2str(cipher), iv: ab2str(iv) }
     }
 
     async function decrypt({ iv, ciphertext }) {
-        let plain = await window.crypto.subtle.decrypt({ name: "AES-CBC", iv: iv }, roomkey, str2ab(ciphertext))
+        let plain = await window.crypto.subtle.decrypt({ name: "AES-CBC", iv: str2ab(iv) }, roomkey, str2ab(ciphertext))
         return ab2str(plain)
     }
 
@@ -75,7 +82,12 @@ export default function useCrypto() {
         return ab2str(sig)
     }
 
-    return { encrypt, decrypt, publicKey, sign }
+
+    return { encrypt, decrypt, publicKeys, sign }
+}
+
+export async function wrapKey(rsaPubKeyJwk, aesKeyJwk) {
+
 }
 
 async function createRSApair() {
