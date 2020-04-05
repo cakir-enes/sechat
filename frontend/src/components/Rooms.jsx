@@ -3,9 +3,12 @@ import { useRoomStore } from "../hooks/useRooms"
 import { Accordion, AccordionPanel, Box, Heading, Button, TextInput } from "grommet"
 import { UserList } from "./Users"
 import { AddCircle, Add, Checkmark, Close } from "grommet-icons"
+import { useActiveUserStore } from "../hooks/useActiveUser"
 
 export default function Rooms() {
     let [rooms, createRoom] = useRoomStore(s => [s.rooms, s.createRoom])
+
+    let [user] = useActiveUserStore(s => [s.active])
 
     let [name, setName] = useState("")
     let [isCreating, setIsCreating] = useState(false)
@@ -21,7 +24,7 @@ export default function Rooms() {
             {isCreating ? (<Box direction="row" animation="fadeIn">
                 <TextInput value={name} onChange={(e) => setName(e.target.value)} autoFocus />
                 <Button margin={{ left: "2px" }} size="small" primary icon={<Checkmark />} />
-                <Button margin={{ left: "2px" }} size="small" icon={<Close />} onClick={() => { setIsCreating(false); setName("") }} />
+                <Button margin={{ left: "2px" }} size="small" icon={<Close />} onClick={create} />
             </Box>
             ) : (<Box direction="row" animation="slideDown" background="brand">
                 <Heading margin="none">

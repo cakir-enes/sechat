@@ -1,4 +1,4 @@
-import React, { useState } from "react"
+import React, { useState, useEffect } from "react"
 import Users from "./components/Users"
 import { Main, Grommet, grommet, Box, Tabs, Tab, Heading } from "grommet"
 import Header from "./components/Header"
@@ -11,8 +11,12 @@ import Register from "./components/Register"
 
 export default function App() {
 
-    let [user] = useActiveUserStore(s => [s.activeUser || {}])
-
+    let [user, loggedin] = useActiveUserStore(s => [s.activeUser || {}, s.loggedin])
+    useEffect(() => {
+        setTimeout(() => {
+            loggedin({ name: "pllz" })
+        }, 1000)
+    }, [])
     return (
         <Grommet theme={grommet}>
             {user ? (
