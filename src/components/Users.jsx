@@ -1,10 +1,10 @@
 import React from "react"
 import { List, Heading, Box } from "grommet"
-import useUsers from "../hooks/useUsers"
+import {useUserStore} from "../hooks/useUsers"
 
 export default function Users() {
 
-    let { users } = useUsers()
+    let [users] = useUserStore(s => [s.users])
 
     return (
         <Box>

@@ -44,13 +44,3 @@ export const [useRoomStore] = create(set => ({
     changeRoom: (newRoom) => set(s => ({currentRoom: newRoom})),
 }))
 
-
-export function useRoomChangeListener() {
-    let [isListening, setIsListening] = useState(false)
-    
-    useEffect(() => {
-        
-    },[])
-
-    return [isListening]
-}
