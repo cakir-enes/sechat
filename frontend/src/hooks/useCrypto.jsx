@@ -51,42 +51,29 @@ export default function useCrypto() {
             .catch(err => console.error(`Roomkey for ${room.name} not found`))
     }, [room])
 
-    const encrypt = useCallback((msg) => {
-        return new Promise((res, rej) => {
-            msg = Buffer.from(JSON.stringify(msg))
-            let iv = window.crypto.getRandomValues(new Uint8Array(16));
-            window.crypto.subtle.encrypt({ name: "AES-CBC", iv }, roomkey, msg)
-                .then(ciphertext => res({ iv, ciphertext: ab2str(ciphertext) }))
-                .catch(err => rej(err))
-        })
-    }, [roomkey])
+    async function encrypt(msg) {
+        let buf = str2ab(JSON.stringify(msg))
+        let iv = window.crypto.getRandomValues(new Uint8Array(16));
+        let cipher = await window.crypto.subtle.encrypt({ name: "AES-CBC", iv }, roomkey, buf)
+        return { ciphertext: ab2str(cipher), iv }
+    }
 
-    const decrypt = useCallback(({ iv, ciphertext }) => {
-        return new Promise((res, rej) => {
-            window.crypto.subtle.decrypt({ name: "AES-CBC", iv: iv }, roomkey, ciphertext)
-                .then(plaintext => res(plaintext))
-                .catch(err => rej(err))
-        })
-    }, [roomkey])
+    async function decrypt({ iv, ciphertext }) {
+        let plain = await window.crypto.subtle.decrypt({ name: "AES-CBC", iv: iv }, roomkey, str2ab(ciphertext))
+        return ab2str(plain)
+    }
 
-    const sign = useCallback(data => {
-        return new Promise((res, rej) => {
-            let buf = Buffer.from(JSON.stringify(data))
-            window.crypto.subtle.sign(
-                {
-                    name: "ECDSA",
-                    hash: { name: "SHA-256" }, //can be "SHA-1", "SHA-256", "SHA-384", or "SHA-512"
-                },
-                signKeys.privateKey, //from generateKey or importKey above
-                buf
-            ).then(sig => res(ab2str(sig)))
-                .catch(err => rej(err))
-        })
-    }, [signKeys])
-
-    useEffect(() => {
-        encrypt({ msg: "aasdasdasdajklhsdfghjkvdfhjkdfg" }).then(v => console.log(v))
-    }, [sign])
+    async function sign(data) {
+        let buf = str2ab(JSON.stringify(data))
+        let sig = await window.crypto.subtle.sign(
+            {
+                name: "ECDSA",
+                hash: { name: "SHA-256" },
+            },
+            signKeys.privateKey,
+            buf)
+        return ab2str(sig)
+    }
 
     return { encrypt, decrypt, publicKey, sign }
 }
@@ -101,10 +88,13 @@ async function createRSApair() {
 }
 
 export async function createAESKey() {
-    return window.crypto.subtle.generateKey(
+
+    let keys = await window.crypto.subtle.generateKey(
         { name: "AES-CBC", length: 128 },
         true,
         ["encrypt", "decrypt"])
+    let raw = await window.crypto.subtle.exportKey("raw", keys)
+    return keys
 }
 
 export function createECDSApair() {
