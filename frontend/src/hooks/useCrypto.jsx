@@ -89,6 +89,11 @@ export default function useCrypto() {
         return ab2str(sig)
     }
 
+    async function createRoomKey(roomname) {
+        let key = await createAESKey()
+        set(`room:${roomname}`, key)
+    }
+
     async function wrapRoomkey(jwkRsaPubKey, roomname) {
         // let rk = await get(`room:${roomname}`)
         console.dir(jwkRsaPubKey)
