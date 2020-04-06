@@ -10,6 +10,7 @@ import time
 import asyncio
 import json
 
+lock = asyncio.Lock()
 
 from timeloop import Timeloop
 from datetime import timedelta
@@ -80,10 +81,11 @@ def register(user: User):
 @app.post("/login", status_code=200)
 async def login(body: UserLogin):
     user = check_user(body.name)
-    totp = pyotp.TOTP(user.totp_secret)
-    auth = totp.verify(str(body.security_code))
-    if not auth:
-        raise HTTPException(status_code=401, detail="Wrong security code")
+    print("HERERERE")
+    # totp = pyotp.TOTP(user.totp_secret)
+    # auth = totp.verify(str(body.security_code))
+    # if not auth:
+    #     raise HTTPException(status_code=401, detail="Wrong security code")
     await broadcast("USER_LOGGED_IN", {"name": user.name, "status": "online"})
 
 
@@ -190,11 +192,11 @@ async def message_updates(ws: WebSocket, username: str):
     # TODO CHECK THIS SHIT
     # resp = await ws.receive_text()
     # print(f"RESP: {resp}")
-    sessions[username] = ws
-    print(sessions.keys())
+    async with lock:
+        sessions[username] = ws
+        print(sessions.keys())
     # valid = verify_signature(username, challenge, resp)
     valid = True
-
     if not valid:
         ws.send_text("thats not cool bro")
         ws.close()
@@ -206,13 +208,14 @@ async def message_updates(ws: WebSocket, username: str):
 
 @app.post("/broadcast")
 async def broadcast(_type, payload):
-    print(len(sessions.values()))
-    for k, ws in sessions.items():
-        try:
-            await ws.send_json({"type": _type, "payload": payload})
-        except:
-            print("hes offline")
-            del sessions[k]
+    async with lock:
+        print(len(sessions.values()))
+        for k, ws in sessions.items():
+            try:
+                await ws.send_json({"type": _type, "payload": payload})
+            except:
+                print("hes offline")
+                del sessions[k]
 
 
 async def send_to(username, _type, payload):

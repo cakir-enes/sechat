@@ -13,11 +13,11 @@ import useChangeListener from "./hooks/useChangeListener"
 export default function App() {
 
     let [user, loggedin] = useActiveUserStore(s => [s.active, s.loggedin])
-    useEffect(() => {
-        setTimeout(() => {
-            loggedin({ name: "sdfsdf" })
-        }, 1000)
-    }, [])
+    // useEffect(() => {
+    //     setTimeout(() => {
+    //         loggedin({ name: "sdfsdf" })
+    //     }, 1000)
+    // }, [])
 
     useEffect(() => {
         console.dir(user)

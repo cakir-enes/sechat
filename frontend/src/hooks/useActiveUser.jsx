@@ -9,5 +9,6 @@ export const [useActiveUserStore] = create(set => ({
     }),
     logout: () => set(s => {
         console.log("Logging out")
+        return { active: null }
     })
 }))
