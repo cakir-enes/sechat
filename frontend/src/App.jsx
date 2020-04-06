@@ -15,7 +15,7 @@ export default function App() {
     let [user, loggedin] = useActiveUserStore(s => [s.active, s.loggedin])
     useEffect(() => {
         setTimeout(() => {
-            loggedin({ name: "qwert" })
+            loggedin({ name: "sdfsdf" })
         }, 1000)
     }, [])
 

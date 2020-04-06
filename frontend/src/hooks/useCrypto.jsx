@@ -98,7 +98,7 @@ export default function useCrypto() {
         return ab2str(wrapped)
     }
 
-    return { encrypt, decrypt, publicKeys, sign }
+    return { encrypt, decrypt, publicKeys, sign, wrapRoomkey, createRoomKey }
 }
 
 async function wrapKey(rsaPubKey, aesKey) {

@@ -3,7 +3,7 @@ import { replace } from './utils'
 import create from "zustand"
 
 export const [useRoomStore] = create(set => ({
-    rooms: [{ name: "Cet", users: [{ name: "asd", status: "online" }, { name: "zxc", status: "offline" }] }],
+    rooms: [],
     userLeft: (roomname, username) => set(s => {
         let roomIdx = rooms.find(r => r.name = roomname)
         if (!roomIdx) return s
@@ -12,11 +12,13 @@ export const [useRoomStore] = create(set => ({
         if (userIdx < 0) return s
         return { room }
     }),
-    userJoined: (rommname, username) => set(s => {
-
+    userJoined: (roomname, username) => set(s => {
+        let roomIdx = s.rooms.findIndex(r => r.name === roomname)
+        let room = s.rooms[roomIdx]
+        room.users.push({ name: username, status: "online" })
+        return { rooms: replace(s.rooms, roomIdx, [...room]) }
     }),
-    userLoggedIn: (roomname, username) => set(s => {
-
+    userLoggedIn: (username) => set(s => {
     }),
     userLoggedOut: (roomname, username) => set(s => {
 

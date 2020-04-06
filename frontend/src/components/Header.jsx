@@ -4,6 +4,7 @@ import { Logout, SettingsOption, Notification, FormCheckmark, FormClose } from "
 import { useActiveUserStore } from "../hooks/useActiveUser"
 import { useMessageStore } from "../hooks/useMessaging"
 import { useNotificationStore } from "../hooks/useNotifications"
+import useCrypto from "../hooks/useCrypto"
 
 export default function Header() {
     let [logout] = useActiveUserStore(s => [s.logout])
@@ -24,22 +25,49 @@ export default function Header() {
 function PendingRequests() {
 
     let [pending] = useNotificationStore(s => [s.pending])
+    let { wrapRoomkey } = useCrypto()
+
+    let handle = async (roomname, req_id, accepting) => {
+        let req = { req_id, accepting, signature: "" }
+        let resp = await fetch("http://localhost:8000/handle-join-req", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify(req)
+        })
+        if (!resp.ok) throw new Error("Something went wrong")
+        if (accepting) {
+            let { rsa_public_key } = resp.json()
+            // let encr = await wrapRoomkey(rsa_public_key, roomname)
+            req = { req_id, key: "ASD" }
+            console.log("SENDING: " + JSON.stringify(req))
+            resp = await fetch("http://localhost:8000/forward-key", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify(req)
+            })
+        }
+    }
 
     return (<Stack anchor="top-right">
         <DropButton hoverIndicator icon={<Notification />}
             dropAlign={{ top: 'bottom' }}
             dropContent={
                 <Box pad="small" background="light-2">
-                    <Box direction="row" alignContent="between">
-                        <Text alignSelf="center">
-                            <Markdown >
-                                **asda** wants to join **asdas**
-                        </Markdown>
-
-                        </Text>
-                        <Button margin={{ left: "4px" }} primary color="limegreen" size="small" icon={<FormCheckmark />} />
-                        <Button size="small" icon={<FormClose />} />
-                    </Box>
+                    {pending.map(p => (
+                        <Box key={p.req_id} direction="row" alignContent="between">
+                            <Text alignSelf="center">
+                                <Markdown>
+                                    {`**${p.issuer}** wants to join **${p.room_name}**`}
+                                </Markdown>
+                            </Text>
+                            <Button handle={() => handle(p.room, p.req_id, true)} margin={{ left: "4px" }} primary color="limegreen" size="small" icon={<FormCheckmark />} />
+                            <Button onClick={() => handle(p.room, p.req_id, false)} size="small" icon={<FormClose />} />
+                        </Box>
+                    ))}
                 </Box>
             } />
         <Box pad={{ horizontal: "xsmall" }} background="limegreen" round>

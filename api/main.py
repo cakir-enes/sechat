@@ -51,7 +51,7 @@ class Pending(BaseModel):
     room_name: str
     user_name: str
     admin_name: str
-    id: str = uuid.uuid1()
+    id: str = str(uuid.uuid1())
 
 
 app = FastAPI()
@@ -113,7 +113,10 @@ async def make_room(req: RoomCreate):
     )
     room_db.insert(room.dict())
     print("BROADCASTING")
-    await broadcast("NEW_ROOM", {"name": room.name})
+    await broadcast(
+        "NEW_ROOM",
+        {"name": room.name, "users": [{"name": user.name, "status": "online"}]},
+    )
 
 
 class JoinReq(BaseModel):
@@ -123,20 +126,21 @@ class JoinReq(BaseModel):
 
 
 @app.post("/join-room", status_code=200)
-def join_room(req: JoinReq):
-    verify_signature(req.user_name, req.room_name, req.signature)
+async def join_room(req: JoinReq):
+    # verify_signature(req.user_name, req.room_name, req.signature)
     room = check_room(req.room_name)
-    pending_db.insert(
-        Pending(
-            room_name=req.room_name, user_name=req.user_name, admin_name=room.admin_name
-        ).dict()
+    pending = Pending(
+        room_name=req.room_name, user_name=req.user_name, admin_name=room.admin_name
     )
+    pending_db.insert(pending.dict())
     try:
-        send_to(
-            room.admin_name, "NEW_REQ", {"issuer": req.user_name, "room": room.name}
+        await send_to(
+            room.admin_name,
+            "NEW_REQ",
+            {"issuer": req.user_name, "room_name": room.name, "req_id": pending.id},
         )
-    except:
-        print(f"Dude is not online {room.admin_name}")
+    except Exception as e:
+        print(f"Dude is not online {room.admin_name} err: {e}")
 
 
 class InvReq(BaseModel):
@@ -152,7 +156,7 @@ def handle_join_req(req: InvReq):
     if req.accepting:
         issuer = check_user(inv.user_name)
         jobs
-        return {"rsa_public_key": issuer.rsa_public_key}
+        return {"rsa_fofpublic_key": issuer.rsa_public_key}
     Inv = Query()
     pending_db.remove(Inv.id == req.req_id)
 
@@ -188,6 +192,7 @@ async def message_updates(ws: WebSocket, username: str):
     # resp = await ws.receive_text()
     # print(f"RESP: {resp}")
     sessions[username] = ws
+    print(sessions.keys())
     # valid = verify_signature(username, challenge, resp)
     valid = True
 
@@ -203,12 +208,16 @@ async def message_updates(ws: WebSocket, username: str):
 @app.post("/broadcast")
 async def broadcast(_type, payload):
     print(len(sessions.values()))
-    for ws in sessions.values():
-        await ws.send_json({"type": _type, "payload": payload})
+    for k, ws in sessions.items():
+        try:
+            await ws.send_json({"type": _type, "payload": payload})
+        except:
+            print("hes offline")
+            del sessions[k]
 
 
 async def send_to(username, _type, payload):
-    await sessions[username].send_json({"type": _type, payload: payload})
+    await sessions[username].send_json({"type": _type, "payload": payload})
 
 
 def check_user(user_name: str) -> User:
@@ -221,7 +230,7 @@ def check_user(user_name: str) -> User:
 
 def check_room(room_name: str) -> Room:
     q = Query()
-    room = room_db.search(q.room_name == room_name)
+    room = room_db.search(q.name == room_name)
     if not room:
         raise HTTPException(status_code=404, detail="Room not found")
     return Room.parse_obj(room[0])

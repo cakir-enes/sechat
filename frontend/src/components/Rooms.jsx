@@ -42,6 +42,19 @@ export default function Rooms() {
         setIsCreating(false)
         setName("")
     }
+
+    let join = async (room_name) => {
+        let req = { room_name: room_name, user_name: user.name, signature: "asdasdas" }
+        let resp = await fetch("http://localhost:8000/join-room", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(req)
+        })
+        if (!resp.ok) throw new Error("plz")
+    }
+
     return (
         <Box>
             {isCreating ? (<Box direction="row" animation="fadeIn">
@@ -58,6 +71,7 @@ export default function Rooms() {
             <Accordion>
                 {rooms.map(r => (
                     <AccordionPanel key={r.name} label={r.name}>
+                        <Button size="small" margin="small" label="Join" primary onClick={() => join(r.name)} />
                         <UserList users={r.users} />
                     </AccordionPanel>))}
             </Accordion>

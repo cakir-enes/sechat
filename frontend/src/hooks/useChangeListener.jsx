@@ -45,8 +45,8 @@ export default function useChangeListener() {
         })
 
         ws.onmessage = ({ data }) => {
-            let { payload, type } = JSON.parse(`${data}`)
             console.log("MSG RECV: " + data)
+            let { payload, type } = JSON.parse(data)
             switch (type) {
                 case "YOU_OK":
                     ws.send({ type: "CHANGE_ROOM", payload: rooms.names })
@@ -56,15 +56,15 @@ export default function useChangeListener() {
                     sign(payload).then(sig => ws.send(sig))
                     break
                 case "NEW_ROOM":
-                    let newRoom = JSON.parse(payload)
+                    let newRoom = payload
                     rooms.created(newRoom)
                     break
                 case "NEW_REQ":
-                    let req = JSON.parse(payload)
+                    let req = payload
                     newNotification(req)
                     break
                 case "NEW_MSG":
-                    let msg = JSON.parse(payload)
+                    let msg = payload
                     decrypt(msg).then(m => newMessage(m)).catch(err => {
                         console.error("Coudlnt decipher " + msg)
                     })
