@@ -152,11 +152,10 @@ class InvReq(BaseModel):
 @app.post("/handle-join-req", status_code=200)
 def handle_join_req(req: InvReq):
     inv = check_inv(req.req_id)
-    verify_signature(inv.admin_name, req.req_id + req.accepting, req.signature)
+    # verify_signature(inv.admin_name, req.req_id + req.accepting, req.signature)
     if req.accepting:
         issuer = check_user(inv.user_name)
-        jobs
-        return {"rsa_fofpublic_key": issuer.rsa_public_key}
+        return {"rsa_public_key": issuer.rsa_public_key}
     Inv = Query()
     pending_db.remove(Inv.id == req.req_id)
 

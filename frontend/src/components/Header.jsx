@@ -24,10 +24,11 @@ export default function Header() {
 
 function PendingRequests() {
 
-    let [pending] = useNotificationStore(s => [s.pending])
+    let [pending, remove] = useNotificationStore(s => [s.pending, s.remove])
     let { wrapRoomkey } = useCrypto()
 
     let handle = async (roomname, req_id, accepting) => {
+        console.log("DIS SHIT")
         let req = { req_id, accepting, signature: "" }
         let resp = await fetch("http://localhost:8000/handle-join-req", {
             method: "POST",
@@ -40,15 +41,18 @@ function PendingRequests() {
         if (accepting) {
             let { rsa_public_key } = resp.json()
             // let encr = await wrapRoomkey(rsa_public_key, roomname)
-            req = { req_id, key: "ASD" }
+            let forwardReq = { req_id, key: "ASD", signature: "asdzcx" }
             console.log("SENDING: " + JSON.stringify(req))
-            resp = await fetch("http://localhost:8000/forward-key", {
+            let forwardResp = await fetch("http://localhost:8000/forward-key", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
                 },
-                body: JSON.stringify(req)
+                body: JSON.stringify(forwardReq)
             })
+            if (forwardResp.ok) {
+                remove(req_id)
+            }
         }
     }
 
@@ -64,8 +68,8 @@ function PendingRequests() {
                                     {`**${p.issuer}** wants to join **${p.room_name}**`}
                                 </Markdown>
                             </Text>
-                            <Button handle={() => handle(p.room, p.req_id, true)} margin={{ left: "4px" }} primary color="limegreen" size="small" icon={<FormCheckmark />} />
-                            <Button onClick={() => handle(p.room, p.req_id, false)} size="small" icon={<FormClose />} />
+                            <Button onClick={() => handle(p.room_name, p.req_id, true)} margin={{ left: "4px" }} primary color="limegreen" size="small" icon={<FormCheckmark />} />
+                            <Button onClick={() => handle(p.room_name, p.req_id, false)} size="small" icon={<FormClose />} />
                         </Box>
                     ))}
                 </Box>
