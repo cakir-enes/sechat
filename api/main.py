@@ -184,9 +184,10 @@ async def message_updates(ws: WebSocket, username: str):
     await ws.accept()
     challenge = pyotp.random_base32()
     await ws.send_json({"type": "CHALLENGE", "payload": challenge})
-    resp = await ws.receive_text()
-    print(f"RESP: {resp}")
-
+    # TODO CHECK THIS SHIT
+    # resp = await ws.receive_text()
+    # print(f"RESP: {resp}")
+    sessions[username] = ws
     # valid = verify_signature(username, challenge, resp)
     valid = True
 
@@ -194,18 +195,16 @@ async def message_updates(ws: WebSocket, username: str):
         ws.send_text("thats not cool bro")
         ws.close()
         return
-    sessions[username] = ws
+
     while True:
         data = await ws.receive_text()
-        await ws.send_json({"MAY": "MAN"})
 
 
 @app.post("/broadcast")
 async def broadcast(_type, payload):
-
-    return asyncio.wait(
-        [ws.send_json({"type": _type, "payload": payload}) for ws in sessions.values()]
-    )
+    print(len(sessions.values()))
+    for ws in sessions.values():
+        await ws.send_json({"type": _type, "payload": payload})
 
 
 async def send_to(username, _type, payload):
