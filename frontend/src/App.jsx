@@ -11,10 +11,10 @@ import Register from "./components/Register"
 
 export default function App() {
 
-    let [user, loggedin] = useActiveUserStore(s => [s.activeUser || {}, s.loggedin])
+    let [user, loggedin] = useActiveUserStore(s => [s.activeUser, s.loggedin])
     useEffect(() => {
         setTimeout(() => {
-            loggedin({ name: "pllz" })
+            // loggedin({ name: "pllz" })
         }, 1000)
     }, [])
     return (

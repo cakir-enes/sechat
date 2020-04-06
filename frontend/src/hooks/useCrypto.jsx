@@ -20,10 +20,7 @@ export default function useCrypto() {
             let keypair = await get(`user:${user.name}:rsa`)
             let signkeypair = await get(`user:${user.name}:ecdsa`)
             if (!keypair) {
-                keypair = await createRSApair()
-                signkeypair = await createECDSApair()
-                set(`user:${user.name}:rsa`, keypair)
-                set(`user:${user.name}:ecdsa`, signkeypair)
+
             }
             setSignKeys(signkeypair)
             let encrKey = window.crypto.subtle.exportKey("jwk", keypair.publicKey)
@@ -136,7 +133,7 @@ async function unwrapKey(rsaPrivKey, wrappedAesJwk) {
     )
 }
 
-async function createRSApair() {
+export async function createRSApair() {
     return window.crypto.subtle.generateKey({
         name: "RSA-OAEP",
         modulusLength: 2048,
@@ -165,7 +162,13 @@ export function createECDSApair() {
         ["sign", "verify"] //can be any combination of "sign" and "verify"
     )
 }
-
+export async function createKeysForRegister() {
+    let exportKey = k => window.crypto.subtle.exportKey("jwk", k)
+    let rsaKeys = await createRSApair()
+    let ecdsaKeys = await createECDSApair()
+    let pub = { rsa: rsaKeys.publicKey, ecdsa: ecdsaKeys.publicKey }
+    return { pub: { rsa: await exportKey(pub.rsa), ecdsa: await exportKey(pub.ecdsa) }, orig: { rsa: rsaKeys, ecdsa: ecdsaKeys } }
+}
 function ab2str(buf) {
     return String.fromCharCode.apply(null, new Uint16Array(buf));
 }

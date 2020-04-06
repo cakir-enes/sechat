@@ -4,7 +4,7 @@ from tinydb import TinyDB, Query
 from pydantic import BaseModel
 from ecdsa import VerifyingKey
 import json
-from typing import List
+from typing import List, Dict
 from fastapi.middleware.cors import CORSMiddleware
 import time
 
@@ -28,8 +28,8 @@ sessions = {}
 
 class User(BaseModel):
     name: str
-    rsa_public_key: str
-    ecdsa_public_key: str
+    rsa_public_key: Dict
+    ecdsa_public_key: Dict
     totp_secret: str = None
 
 
@@ -61,34 +61,26 @@ app.add_middleware(
 )
 
 
-@app.get("/")
-def read_root():
-    return {"Hello": "World"}
-
-
-@app.post("/register", status_code=201)
+@app.post("/register", status_code=200)
 def register(user: User):
     q = Query()
-    exists = user_db.search(q.name.exists())
+    exists = user_db.search(q.name == user.name)
     if exists:
         raise HTTPException(status_code=409, detail="User already exists")
     secret = pyotp.random_base32()
-    print(secret)
     totp = pyotp.TOTP(secret).provisioning_uri(name=user.name, issuer_name="FETOCHAT")
-    user.totp_secret = totp
+    user.totp_secret = secret
     user_db.insert(user.dict())
     return {"totp": totp}
 
 
 @app.post("/login", status_code=200)
 def login(body: UserLogin):
-    q = Query()
     user = check_user(body.name)
     totp = pyotp.TOTP(user.totp_secret)
     auth = totp.verify(str(body.security_code))
     if not auth:
         raise HTTPException(status_code=401, detail="Wrong security code")
-    return get_joined_rooms(user.username)
 
 
 def get_joined_rooms(username: str):
@@ -102,7 +94,7 @@ class RoomCreate(BaseModel):
     signature: str
 
 
-@app.post("/create-room", status_code=201)
+@app.post("/create-room", status_code=200)
 def make_room(req: RoomCreate):
     valid = verify_signature(
         req.admin_name, req.room_name + req.admin_name, req.signature
@@ -197,7 +189,7 @@ def check_user(user_name: str) -> User:
     user = user_db.search(q.name == user_name)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    return user[0]
+    return User.parse_obj(user[0])
 
 
 def check_room(room_name: str) -> Room:
@@ -205,7 +197,7 @@ def check_room(room_name: str) -> Room:
     room = room_db.search(q.room_name == room_name)
     if not room:
         raise HTTPException(status_code=404, detail="Room not found")
-    return room[0]
+    return Room.parse_obj(room[0])
 
 
 def check_inv(req_id: str) -> Pending:
@@ -213,7 +205,7 @@ def check_inv(req_id: str) -> Pending:
     inv = pending_db.search(q.id == req_id)
     if not inv:
         raise HTTPException(status_code=404, detail="Invitation not found")
-    return inv[0]
+    return Pending.parse_obj(inv[0])
 
 
 def verify_signature(user_name: str, to_verify: str, claim: str) -> bool:
