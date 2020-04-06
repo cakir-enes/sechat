@@ -11,12 +11,17 @@ import Register from "./components/Register"
 
 export default function App() {
 
-    let [user, loggedin] = useActiveUserStore(s => [s.activeUser, s.loggedin])
+    let [user, loggedin] = useActiveUserStore(s => [s.active, s.loggedin])
     useEffect(() => {
         setTimeout(() => {
-            // loggedin({ name: "pllz" })
+            loggedin({ name: "qwert" })
         }, 1000)
     }, [])
+
+    useEffect(() => {
+        console.dir(user)
+    }, [user])
+
     return (
         <Grommet theme={grommet}>
             {user ? (

@@ -54,7 +54,7 @@ class Pending(BaseModel):
 app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["*", "http://localhost:1234"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -96,18 +96,19 @@ class RoomCreate(BaseModel):
 
 @app.post("/create-room", status_code=200)
 def make_room(req: RoomCreate):
-    valid = verify_signature(
-        req.admin_name, req.room_name + req.admin_name, req.signature
-    )
+    # valid = verify_signature(
+    #     req.admin_name, req.room_name + req.admin_name, req.signature
+    # )
     user = check_user(req.admin_name)
-    query = Query()
-    alreadyCreated = room_db.search(query.room_name.exists())
+    room = Query()
+    alreadyCreated = room_db.search(room.name == req.room_name)
     if alreadyCreated:
         raise HTTPException(status_code=401, detail="Room already exists")
     room = Room(
         admin_name=req.admin_name, participants=[req.admin_name], name=req.room_name
     )
     room_db.insert(room.dict())
+    broadcast(room)
 
 
 class JoinReq(BaseModel):
@@ -182,6 +183,11 @@ async def message_updates(ws: WebSocket, username: str):
         ws.state
         data = await ws.receive_text()
         await ws.send_json({"MAY": "MAN"})
+
+
+def broadcast(data):
+    for ws in sessions:
+        ws.send_json(data)
 
 
 def check_user(user_name: str) -> User:

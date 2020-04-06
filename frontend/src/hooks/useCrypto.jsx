@@ -19,19 +19,19 @@ export default function useCrypto() {
             if (!user) return
             let keypair = await get(`user:${user.name}:rsa`)
             let signkeypair = await get(`user:${user.name}:ecdsa`)
-            if (!keypair) {
-
+            if (!keypair || !signkeypair) {
+                console.error("COULDNT FIND KEYS FOR " + user.name)
             }
             setSignKeys(signkeypair)
             let encrKey = window.crypto.subtle.exportKey("jwk", keypair.publicKey)
             let signKey = window.crypto.subtle.exportKey("jwk", signkeypair.publicKey)
             setPublicKeys({ encryption: await encrKey, signing: await signKey })
+            // TODO FIX THIS SHIT
             let rk = await createAESKey()
             setRoomkey(rk)
             setRsaPub(keypair.publicKey)
             let w = await wrapRoomkey(await encrKey, rk)
             let uw = await unwrapKey(keypair.privateKey, w)
-            console.dir(uw)
         }
         check()
     }, [user])
@@ -52,11 +52,9 @@ export default function useCrypto() {
                 let dec = await decrypt(enc)
                 let sig = await sign(dec)
                 console.dir({ enc, dec, sig })
-                console.dir(rsaPub)
-                // let raw = await window.crypto.subtle.exportKey("raw", rsaPub)
                 let x = await wrapKey(rsaPub, roomkey)
-                console.log("wrapped")
-                console.dir(x)
+                let pub = await window.crypto.subtle.exportKey("jwk", signKeys.publicKey)
+                console.log(JSON.stringify(pub))
             }
             // dene()
         }

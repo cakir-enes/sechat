@@ -11,7 +11,7 @@ export default function Register() {
     let [qr, setQr] = useState()
     let [form, setForm] = useState()
 
-    let register = useCallback(async (form) => {
+    let register = useCallback(async (username) => {
         setWaiting(true)
         let { pub, orig } = await createKeysForRegister()
 
@@ -21,7 +21,7 @@ export default function Register() {
                 "Content-Type": "application/json",
             },
             body: JSON.stringify({
-                name: form,
+                name: username,
                 rsa_public_key: pub.rsa,
                 ecdsa_public_key: pub.ecdsa
             })
@@ -32,8 +32,8 @@ export default function Register() {
         })
             .then(resp => resp.json())
             .then(({ totp }) => {
-                set(`user:${form.username}:rsa`, orig.rsa)
-                set(`user:${form.username}:rsa`, orig.ecdsa)
+                set(`user:${username}:rsa`, orig.rsa)
+                set(`user:${username}:ecdsa`, orig.ecdsa)
                 setQr(totp)
                 setErrors({ exist: false })
                 setWaiting(false)

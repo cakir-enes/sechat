@@ -1,8 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { replace } from './utils'
 import create from "zustand"
-import useCrypto, { createAESKey } from "../hooks/useCrypto"
-import { useActiveUserStore } from './useActiveUser'
 
 export const [useRoomStore] = create(set => ({
     rooms: [{ name: "Cet", users: [{ name: "asd", status: "online" }, { name: "zxc", status: "offline" }] }],
@@ -24,20 +22,3 @@ export const [useRoomStore] = create(set => ({
 
     }),
 }))
-
-export default function useRoom() {
-
-    let { sign } = useCrypto()
-    let [user] = useActiveUserStore(s => [s.user])
-
-    let createRoom = (async (roomname) => {
-        let key = await createAESKey()
-        let req = { username: user.name, roomname: roomname }
-        let sig = await sign(req)
-        req.sig = sig
-        console.log(`Create new room plz: ${JSON.stringify(req)}`)
-    })
-
-    return [createRoom]
-}
-
