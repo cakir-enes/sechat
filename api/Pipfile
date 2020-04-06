@@ -11,6 +11,10 @@ pylint = "*"
 fastapi = "*"
 uvicorn = "*"
 pyotp = "*"
+tinydb = "*"
+ecdsa = "*"
+huey = "*"
+timeloop = "*"
 
 [requires]
 python_version = "3.8"
