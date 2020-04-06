@@ -21,4 +21,5 @@ export const [useRoomStore] = create(set => ({
     userLoggedOut: (roomname, username) => set(s => {
 
     }),
+    roomCreated: (room) => set(s => ({ rooms: [...s.rooms, room] }))
 }))

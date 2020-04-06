@@ -1,6 +1,6 @@
 import React, { useCallback, useState, useEffect } from "react"
 import { useActiveUserStore } from "./useActiveUser"
-import useMessaging, { useMessageStore } from "./useMessaging"
+import { useMessageStore } from "./useMessaging"
 import 'regenerator-runtime/runtime'
 import { set, get, del } from 'idb-keyval';
 
@@ -22,6 +22,7 @@ export default function useCrypto() {
             if (!keypair || !signkeypair) {
                 console.error("COULDNT FIND KEYS FOR " + user.name)
             }
+            console.log("SIGN KEYS READY")
             setSignKeys(signkeypair)
             let encrKey = window.crypto.subtle.exportKey("jwk", keypair.publicKey)
             let signKey = window.crypto.subtle.exportKey("jwk", signkeypair.publicKey)
@@ -73,13 +74,14 @@ export default function useCrypto() {
     }
 
     async function sign(data) {
+        let key = signKeys ? signKeys.privateKey : (await get(`user:${user.name}:ecdsa`)).privateKey
         let buf = str2ab(JSON.stringify(data))
         let sig = await window.crypto.subtle.sign(
             {
                 name: "ECDSA",
                 hash: { name: "SHA-256" },
             },
-            signKeys.privateKey,
+            key,
             buf)
         return ab2str(sig)
     }
@@ -91,7 +93,6 @@ export default function useCrypto() {
 
     async function wrapRoomkey(jwkRsaPubKey, roomname) {
         // let rk = await get(`room:${roomname}`)
-        console.dir(jwkRsaPubKey)
         let k = await window.crypto.subtle.importKey("jwk", jwkRsaPubKey, { name: "RSA-OAEP", hash: { name: "SHA-256" } }, true, ["wrapKey"])
         let wrapped = await wrapKey(k, roomname)
         return ab2str(wrapped)

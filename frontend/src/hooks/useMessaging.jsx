@@ -7,23 +7,8 @@ import create from "zustand";
 export const [useMessageStore] = create(set => ({
     currentRoom: null,
     messages: [],
+    send: null,
+    setSend: sendfn => set(s => ({ send: sendfn })),
     changeRoom: (newRoom) => set(s => ({ currentRoom: newRoom })),
-    newMessage: (msg) => set(s => ({ messages: [] }))
+    newMessage: (msg) => set(s => ({ messages: [...s.messages, msg] })),
 }))
-
-export default function useMessaging() {
-    let { encrypt, decrypt } = useCrypto()
-    let [messages, room] = useMessageStore(s => [s.messages, s.currentRoom])
-    let [ws, setWs] = useState()
-
-    let send = useCallback(() => {
-
-    }, [room])
-
-
-    useEffect(() => {
-
-    }, [room])
-
-    return { send, messages, room }
-}

@@ -7,6 +7,7 @@ import Chat from "./components/Chat"
 import { useActiveUserStore } from "./hooks/useActiveUser"
 import Login from "./components/Login"
 import Register from "./components/Register"
+import useChangeListener from "./hooks/useChangeListener"
 
 
 export default function App() {
@@ -21,6 +22,8 @@ export default function App() {
     useEffect(() => {
         console.dir(user)
     }, [user])
+
+    useChangeListener()
 
     return (
         <Grommet theme={grommet}>

@@ -7,6 +7,9 @@ import json
 from typing import List, Dict
 from fastapi.middleware.cors import CORSMiddleware
 import time
+import asyncio
+import json
+
 
 from timeloop import Timeloop
 from datetime import timedelta
@@ -19,11 +22,11 @@ user_db = TinyDB("user.json")
 room_db = TinyDB("room.json")
 pending_db = TinyDB("pending.json")
 
-tl = Timeloop()
 
 jobs = []
 rooms = {}
 sessions = {}
+loop = asyncio.get_event_loop()
 
 
 class User(BaseModel):
@@ -75,12 +78,13 @@ def register(user: User):
 
 
 @app.post("/login", status_code=200)
-def login(body: UserLogin):
+async def login(body: UserLogin):
     user = check_user(body.name)
     totp = pyotp.TOTP(user.totp_secret)
     auth = totp.verify(str(body.security_code))
     if not auth:
         raise HTTPException(status_code=401, detail="Wrong security code")
+    await broadcast("USER_LOGGED_IN", {"name": user.name, "status": "online"})
 
 
 def get_joined_rooms(username: str):
@@ -95,7 +99,7 @@ class RoomCreate(BaseModel):
 
 
 @app.post("/create-room", status_code=200)
-def make_room(req: RoomCreate):
+async def make_room(req: RoomCreate):
     # valid = verify_signature(
     #     req.admin_name, req.room_name + req.admin_name, req.signature
     # )
@@ -108,7 +112,8 @@ def make_room(req: RoomCreate):
         admin_name=req.admin_name, participants=[req.admin_name], name=req.room_name
     )
     room_db.insert(room.dict())
-    broadcast(room)
+    print("BROADCASTING")
+    await broadcast("NEW_ROOM", {"name": room.name})
 
 
 class JoinReq(BaseModel):
@@ -126,6 +131,12 @@ def join_room(req: JoinReq):
             room_name=req.room_name, user_name=req.user_name, admin_name=room.admin_name
         ).dict()
     )
+    try:
+        send_to(
+            room.admin_name, "NEW_REQ", {"issuer": req.user_name, "room": room.name}
+        )
+    except:
+        print(f"Dude is not online {room.admin_name}")
 
 
 class InvReq(BaseModel):
@@ -168,26 +179,37 @@ async def forward_key(req: ForwardReq):
         print("error")
 
 
-@app.websocket("/messages/${username}")
+@app.websocket("/notifications/{username}")
 async def message_updates(ws: WebSocket, username: str):
     await ws.accept()
     challenge = pyotp.random_base32()
-    await ws.send_text(challenge)
+    await ws.send_json({"type": "CHALLENGE", "payload": challenge})
     resp = await ws.receive_text()
-    valid = verify_signature(username, challenge, resp)
+    print(f"RESP: {resp}")
+
+    # valid = verify_signature(username, challenge, resp)
+    valid = True
+
     if not valid:
+        ws.send_text("thats not cool bro")
         ws.close()
         return
     sessions[username] = ws
     while True:
-        ws.state
         data = await ws.receive_text()
         await ws.send_json({"MAY": "MAN"})
 
 
-def broadcast(data):
-    for ws in sessions:
-        ws.send_json(data)
+@app.post("/broadcast")
+async def broadcast(_type, payload):
+
+    return asyncio.wait(
+        [ws.send_json({"type": _type, "payload": payload}) for ws in sessions.values()]
+    )
+
+
+async def send_to(username, _type, payload):
+    await sessions[username].send_json({"type": _type, payload: payload})
 
 
 def check_user(user_name: str) -> User:

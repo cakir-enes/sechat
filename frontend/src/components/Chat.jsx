@@ -1,11 +1,11 @@
 import React, { useState, useCallback } from "react"
-import useMessaging from "../hooks/useMessaging"
+import { useMessageStore } from "../hooks/useMessaging"
 import { Main, Grid, Box, Text, Paragraph, Heading, TextInput, Button, Form, Keyboard } from "grommet"
 import { Send } from "grommet-icons"
 
 export default function Chat() {
 
-    let { send, messages, room } = useMessaging()
+    let [send, messages, room] = useMessageStore(s => [s.send, s.messages, s.currentRoom])
     let [value, setValue] = useState("")
 
     let sendMsg = () => { console.log("Sendong: " + value); setValue("") }
