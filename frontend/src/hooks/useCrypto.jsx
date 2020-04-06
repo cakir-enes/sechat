@@ -8,9 +8,10 @@ export default function useCrypto() {
 
     let [publicKeys, setPublicKeys] = useState({ encryption: null, signing: null })
     let user = useActiveUserStore(s => s.active)
-    let [room] = useMessageStore(s => [s.currentRoom])
+    let [room, changeRoom] = useMessageStore(s => [s.currentRoom, s.changeRoom])
     let [roomkey, setRoomkey] = useState()
     let [signKeys, setSignKeys] = useState()
+    let [rsaPub, setRsaPub] = useState()
 
     useEffect(() => {
         console.count("key check")
@@ -28,6 +29,12 @@ export default function useCrypto() {
             let encrKey = window.crypto.subtle.exportKey("jwk", keypair.publicKey)
             let signKey = window.crypto.subtle.exportKey("jwk", signkeypair.publicKey)
             setPublicKeys({ encryption: await encrKey, signing: await signKey })
+            let rk = await createAESKey()
+            setRoomkey(rk)
+            setRsaPub(keypair.publicKey)
+            let w = await wrapRoomkey(await encrKey, rk)
+            let uw = await unwrapKey(keypair.privateKey, w)
+            console.dir(uw)
         }
         check()
     }, [user])
@@ -39,24 +46,24 @@ export default function useCrypto() {
             .catch(err => console.error(`Roomkey for ${room.name} not found`))
     }, [room])
 
-    useEffect(() => {
-        if (!publicKeys || !publicKeys.encryption || !publicKeys.signing) return
-        console.log("PUB EYS")
-        console.dir(publicKeys)
-    }, [publicKeys])
 
     useEffect(() => {
-        if (roomkey) {
+        if (roomkey && rsaPub) {
             async function dene() {
                 let msg = { msg: "XCXZCXZC" }
                 let enc = await encrypt(msg)
                 let dec = await decrypt(enc)
                 let sig = await sign(dec)
                 console.dir({ enc, dec, sig })
+                console.dir(rsaPub)
+                // let raw = await window.crypto.subtle.exportKey("raw", rsaPub)
+                let x = await wrapKey(rsaPub, roomkey)
+                console.log("wrapped")
+                console.dir(x)
             }
-            dene()
+            // dene()
         }
-    }, [roomkey])
+    }, [roomkey, rsaPub])
 
     async function encrypt(msg) {
         let buf = str2ab(JSON.stringify(msg))
@@ -67,7 +74,7 @@ export default function useCrypto() {
 
     async function decrypt({ iv, ciphertext }) {
         let plain = await window.crypto.subtle.decrypt({ name: "AES-CBC", iv: str2ab(iv) }, roomkey, str2ab(ciphertext))
-        return ab2str(plain)
+        return JSON.parse(ab2str(plain))
     }
 
     async function sign(data) {
@@ -82,12 +89,46 @@ export default function useCrypto() {
         return ab2str(sig)
     }
 
+    async function wrapRoomkey(jwkRsaPubKey, roomname) {
+        // let rk = await get(`room:${roomname}`)
+        console.dir(jwkRsaPubKey)
+        let k = await window.crypto.subtle.importKey("jwk", jwkRsaPubKey, { name: "RSA-OAEP", hash: { name: "SHA-256" } }, true, ["wrapKey"])
+        let wrapped = await wrapKey(k, roomname)
+        return ab2str(wrapped)
+    }
 
     return { encrypt, decrypt, publicKeys, sign }
 }
 
-export async function wrapKey(rsaPubKeyJwk, aesKeyJwk) {
-
+async function wrapKey(rsaPubKey, aesKey) {
+    return window.crypto.subtle.wrapKey(
+        "jwk",
+        aesKey,
+        rsaPubKey,
+        {
+            name: "RSA-OAEP",
+            hash: { name: "SHA-256" }
+        }
+    )
+}
+async function unwrapKey(rsaPrivKey, wrappedAesJwk) {
+    return window.crypto.subtle.unwrapKey(
+        "jwk",
+        str2ab(wrappedAesJwk),
+        rsaPrivKey,
+        {
+            name: "RSA-OAEP",
+            modulusLength: 2048,
+            publicExponent: new Uint8Array([1, 0, 1]),
+            hash: { name: "SHA-256" }
+        },
+        {
+            name: "AES-CBC",
+            length: 128
+        },
+        true,
+        ["encrypt", "decrypt"]
+    )
 }
 
 async function createRSApair() {
@@ -96,7 +137,7 @@ async function createRSApair() {
         modulusLength: 2048,
         publicExponent: new Uint8Array([1, 0, 1]),  // 24 bit representation of 65537
         hash: { name: "SHA-256" }
-    }, false, ["encrypt", "decrypt"])
+    }, false, ["wrapKey", "unwrapKey"])
 }
 
 export async function createAESKey() {
